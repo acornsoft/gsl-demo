@@ -54,3 +54,5 @@ eastus (David's decision, 2026-11-03). The subscription's existing Allowed-locat
 
 ## GitHub OIDC subject format
 GitHub sends OIDC subjects in the ID-based form `repo:acornsoft@3299918/gsl-demo@1444246506:environment:<env>`. The federated credentials match this. The owner and repo IDs are the bootstrap parameters `githubOwnerId` and `githubRepoId`; they are public identifiers, not secrets.
+
+After changing the federated credential subjects in the bootstrap template, a subscription Owner must rerun the bootstrap deployment to update the live Azure credentials. Updating the template alone does not change the existing federated credentials.
