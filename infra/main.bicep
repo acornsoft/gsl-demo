@@ -4,7 +4,7 @@
 // https://learn.microsoft.com/azure/cloud-adoption-framework/ready/azure-best-practices/resource-abbreviations
 // No secrets. Parameters hold only names, IDs and an alert email.
 targetScope = 'resourceGroup'
-// Deployed by the pipeline with `az deployment group` into rg-gsl-dev-eastus2-001.
+// Deployed by the pipeline with `az deployment group` into rg-gsl-dev-eastus-001.
 // The RG, budget, policy and pipeline identity are created by infra/bootstrap (one-time Owner run).
 
 @description('Environment code used in names, e.g. dev.')
@@ -15,7 +15,7 @@ param env string = 'dev'
 param location string = resourceGroup().location
 
 @description('Short region code for length-limited names (Key Vault, Storage).')
-param regionShort string = 'eus2'
+param regionShort string = 'eus'
 
 @description('Instance number.')
 param instance string = '001'

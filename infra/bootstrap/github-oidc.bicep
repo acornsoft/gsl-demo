@@ -1,15 +1,15 @@
 // ONE-TIME OWNER BOOTSTRAP (subscription scope). Everything subscription-scoped lives here:
-//   - resource group rg-gsl-dev-eastus2-001 (tagged)
-//   - pipeline identity id-gsl-dev-eastus2-001 + GitHub OIDC federated credentials
+//   - resource group rg-gsl-dev-eastus-001 (tagged)
+//   - pipeline identity id-gsl-dev-eastus-001 + GitHub OIDC federated credentials
 //   - RG-scoped role assignments for the pipeline (Contributor + conditioned RBAC admin)
 //   - action group + $50 budget (50/80/100% actual, 100% forecast)
 //   - policy definitions (subscription) + policy ASSIGNMENTS scoped to the GSL RG only
 // Run by a subscription Owner after `az account show` confirms ca1fc4ed-...:
-//   az deployment sub create -l eastus2 -f infra/bootstrap/github-oidc.bicep -p infra/bootstrap/bootstrap.parameters.json
+//   az deployment sub create -l eastus -f infra/bootstrap/github-oidc.bicep -p infra/bootstrap/bootstrap.parameters.json
 // No client secret exists. GitHub exchanges its OIDC token for an Entra token.
 targetScope = 'subscription'
 
-param location string = 'eastus2'
+param location string = 'eastus'
 param env string = 'dev'
 param instance string = '001'
 param githubOrg string = 'acornsoft'
