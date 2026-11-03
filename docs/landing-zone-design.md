@@ -51,3 +51,6 @@ These are estimates from list prices. Check them with the Azure pricing calculat
 
 ## Region
 eastus (David's decision, 2026-11-03). The subscription's existing Allowed-locations policies (`b666060a…`, `96048b7f…`) allow eastus, centralus and westus.
+
+## GitHub OIDC subject format
+GitHub sends OIDC subjects in the ID-based form `repo:acornsoft@3299918/gsl-demo@1444246506:environment:<env>`. The federated credentials match this. The owner and repo IDs are the bootstrap parameters `githubOwnerId` and `githubRepoId`; they are public identifiers, not secrets.
