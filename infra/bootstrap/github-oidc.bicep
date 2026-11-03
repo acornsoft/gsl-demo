@@ -4,7 +4,8 @@
 //   - RG-scoped role assignments for the pipeline (Contributor + conditioned RBAC admin)
 //   - action group + $50 budget (50/80/100% actual, 100% forecast)
 //   - policy definitions (subscription) + policy ASSIGNMENTS scoped to the GSL RG only
-// Run by a subscription Owner after `az account show` confirms ca1fc4ed-...:
+// Run by a subscription Owner after `az account show` confirms ca1fc4ed-..., and
+// rerun whenever the identity's GitHub OIDC federated credential subjects change:
 //   az deployment sub create -l eastus -f infra/bootstrap/github-oidc.bicep -p infra/bootstrap/bootstrap.parameters.json
 // No client secret exists. GitHub exchanges its OIDC token for an Entra token.
 targetScope = 'subscription'
