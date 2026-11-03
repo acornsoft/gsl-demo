@@ -1,0 +1,17 @@
+# Local environment and secrets
+.env
+.env.*
+*.env
+.azure/
+# Local parameter overrides
+*.local.json
+*.local.bicepparam
+infra/*.local.*
+# Build output
+*.json.bak
+infra/**/*.compiled.json
+bin/
+obj/
+node_modules/
+.vscode/
+.DS_Store
