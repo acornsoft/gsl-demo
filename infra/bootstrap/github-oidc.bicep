@@ -3,7 +3,7 @@
 //   - pipeline identity id-gsl-dev-eastus2-001 + GitHub OIDC federated credentials
 //   - RG-scoped role assignments for the pipeline (Contributor + conditioned RBAC admin)
 //   - action group + $50 budget (50/80/100% actual, 100% forecast)
-//   - policy definitions/assignments (incl. deny non-Consumption APIM)
+//   - policy definitions (subscription) + policy ASSIGNMENTS scoped to the GSL RG only
 // Run by a subscription Owner after `az account show` confirms ca1fc4ed-...:
 //   az deployment sub create -l eastus2 -f infra/bootstrap/github-oidc.bicep -p infra/bootstrap/bootstrap.parameters.json
 // No client secret exists. GitHub exchanges its OIDC token for an Entra token.
@@ -96,11 +96,21 @@ module budget '../modules/budget.bicep' = {
   }
 }
 
-// Includes the deny policy for any non-Consumption APIM SKU.
+// Custom definitions at subscription scope (definitions only).
+module policyDefs '../modules/policy-defs.bicep' = if (deployGovernance) {
+  name: 'policy-defs'
+}
+
+// ALL policy assignments are scoped to the GSL resource group only, never the subscription.
+// Includes the deny for any non-Consumption APIM SKU. The existing subscription
+// "Allowed locations" assignments (b666060a..., 96048b7f...) are not touched.
 module policy '../modules/policy.bicep' = if (deployGovernance) {
   name: 'policy'
+  scope: rg
   params: {
     allowedLocations: [ location ]
+    apimSkuDefinitionId: policyDefs!.outputs.apimSkuDefinitionId
+    planSkuDefinitionId: policyDefs!.outputs.planSkuDefinitionId
   }
 }
 

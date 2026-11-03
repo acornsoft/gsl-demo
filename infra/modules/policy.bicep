@@ -1,6 +1,13 @@
-// Minimal demo policy set at subscription scope. Built-ins plus two cost guardrails.
-// Deployed only when deployGovernance = true (admin run). Needs Resource Policy Contributor.
-targetScope = 'subscription'
+// GSL policy ASSIGNMENTS, scoped to the GSL resource group only (never the subscription).
+// Custom definitions live at subscription scope in policy-defs.bicep.
+// Deployed by the Owner bootstrap when deployGovernance = true.
+targetScope = 'resourceGroup'
+
+@description('Resource ID of the APIM Consumption-only policy definition.')
+param apimSkuDefinitionId string
+
+@description('Resource ID of the serverless-plans-only policy definition.')
+param planSkuDefinitionId string
 
 param allowedLocations array
 
@@ -12,7 +19,7 @@ param requiredRgTags array = [
   'costCenter'
 ]
 
-@description('Expensive resource types blocked in the demo subscription.')
+@description('Expensive resource types blocked in the GSL resource group.')
 param blockedResourceTypes array = [
   'Microsoft.Network/azureFirewalls'
   'Microsoft.Network/applicationGateways'
@@ -71,7 +78,7 @@ resource paRgLocations 'Microsoft.Authorization/policyAssignments@2024-04-01' = 
 resource paRgTags 'Microsoft.Authorization/policyAssignments@2024-04-01' = [for t in requiredRgTags: {
   name: 'gsl-demo-rg-tag-${toLower(t)}'
   properties: {
-    displayName: 'GSL demo: require tag ${t} on resource groups'
+    displayName: 'GSL demo: require tag ${t} on the GSL resource group'
     policyDefinitionId: defId(builtIn.requireRgTag)
     parameters: {
       tagName: {
@@ -137,82 +144,18 @@ resource paKvSoftDelete 'Microsoft.Authorization/policyAssignments@2024-04-01' =
   }
 }
 
-// ---------- Custom cost guardrails ----------
-resource defApimSku 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
-  name: 'gsl-demo-apim-consumption-only'
-  properties: {
-    displayName: 'GSL demo: API Management must use the Consumption tier'
-    description: 'Developer and higher tiers bill hourly. The demo allows only Consumption.'
-    policyType: 'Custom'
-    mode: 'All'
-    metadata: {
-      category: 'Cost'
-    }
-    policyRule: {
-      if: {
-        allOf: [
-          {
-            field: 'type'
-            equals: 'Microsoft.ApiManagement/service'
-          }
-          {
-            field: 'Microsoft.ApiManagement/service/sku.name'
-            notEquals: 'Consumption'
-          }
-        ]
-      }
-      then: {
-        effect: 'deny'
-      }
-    }
-  }
-}
-
-resource defPlanSku 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
-  name: 'gsl-demo-serverless-plans-only'
-  properties: {
-    displayName: 'GSL demo: App Service plans must be Flex Consumption or Consumption'
-    description: 'Blocks dedicated and Premium plans that bill while idle.'
-    policyType: 'Custom'
-    mode: 'All'
-    metadata: {
-      category: 'Cost'
-    }
-    policyRule: {
-      if: {
-        allOf: [
-          {
-            field: 'type'
-            equals: 'Microsoft.Web/serverfarms'
-          }
-          {
-            field: 'Microsoft.Web/serverfarms/sku.tier'
-            notIn: [
-              'FlexConsumption'
-              'Dynamic'
-            ]
-          }
-        ]
-      }
-      then: {
-        effect: 'deny'
-      }
-    }
-  }
-}
-
 resource paApimSku 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
   name: 'gsl-demo-apim-consumption'
   properties: {
-    displayName: defApimSku.properties.displayName
-    policyDefinitionId: defApimSku.id
+    displayName: 'GSL demo: API Management must use the Consumption tier'
+    policyDefinitionId: apimSkuDefinitionId
   }
 }
 
 resource paPlanSku 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
   name: 'gsl-demo-serverless-plans'
   properties: {
-    displayName: defPlanSku.properties.displayName
-    policyDefinitionId: defPlanSku.id
+    displayName: 'GSL demo: App Service plans must be Flex Consumption or Consumption'
+    policyDefinitionId: planSkuDefinitionId
   }
 }
