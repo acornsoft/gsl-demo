@@ -1,0 +1,97 @@
+# GSL demo landing zone: validate, what-if, then gated deploy.
+# Auth: GitHub OIDC -> user-assigned managed identity (federated credential). No secrets.
+# Required GitHub *environment variables* (Settings > Environments), not secrets, not in the repo:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP
+# The pipeline identity has Contributor on the GSL RG only, so it deploys at RG scope.
+# Subscription-scoped items (RG, budget, policy, identity) come from infra/bootstrap (Owner run).
+# Environments:
+#   demo-preview : deployment branch = main only. No reviewers. Runs what-if.
+#   demo         : deployment branch = main only. Required reviewers. Runs the deploy.
+name: deploy-demo-landing-zone
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['infra/**', 'azure.yaml', '.github/workflows/deploy.yml']
+  push:
+    branches: [main]
+    paths: ['infra/**', 'azure.yaml', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gsl-demo-landing-zone
+  cancel-in-progress: false
+
+env:
+  AZD_ENV_NAME: dev
+
+jobs:
+  validate:
+    name: Build and lint Bicep (no Azure login)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bicep build and lint
+        run: |
+          az bicep install
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build --file infra/bootstrap/github-oidc.bicep --stdout > /dev/null
+          az bicep lint --file infra/main.bicep
+
+  whatif:
+    name: What-if (preview changes)
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: demo-preview
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: What-if at resource-group scope
+        run: |
+          az deployment group what-if \
+            --name "gsl-${{ github.run_id }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.parameters.json \
+            --result-format FullResourcePayloads | tee whatif.txt
+      - name: Publish what-if to job summary
+        run: |
+          { echo '### What-if'; echo '```'; cat whatif.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy (approval required)
+    needs: whatif
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: demo
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy at resource-group scope
+        run: |
+          az deployment group create \
+            --name "gsl-${{ github.run_id }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.parameters.json \
+            --output table

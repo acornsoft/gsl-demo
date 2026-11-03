@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+# GSL demo landing zone (fictional). azd provisions infra only for now.
+name: gsl-demo
+metadata:
+  template: gsl-demo-landing-zone@0.1.0
+infra:
+  provider: bicep
+  path: infra
+  module: main
+# Add the Function App code when Big D's API project exists. Example:
+# services:
+#   api:
+#     project: ./src/api
+#     language: dotnet
+#     host: function
