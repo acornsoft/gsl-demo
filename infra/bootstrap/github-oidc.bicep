@@ -1,90 +1,111 @@
-// ONE-TIME BOOTSTRAP, run by a subscription Owner (or User Access Administrator + Contributor).
-// Creates a user-assigned managed identity for GitHub Actions, with federated credentials.
+// ONE-TIME OWNER BOOTSTRAP (subscription scope). Everything subscription-scoped lives here:
+//   - resource group rg-gsl-dev-eastus2-001 (tagged)
+//   - pipeline identity id-gsl-dev-eastus2-001 + GitHub OIDC federated credentials
+//   - RG-scoped role assignments for the pipeline (Contributor + conditioned RBAC admin)
+//   - action group + $50 budget (50/80/100% actual, 100% forecast)
+//   - policy definitions/assignments (incl. deny non-Consumption APIM)
+// Run by a subscription Owner after `az account show` confirms ca1fc4ed-...:
+//   az deployment sub create -l eastus2 -f infra/bootstrap/github-oidc.bicep -p infra/bootstrap/bootstrap.parameters.json
 // No client secret exists. GitHub exchanges its OIDC token for an Entra token.
-//
-//   az deployment sub create -l eastus2 -f infra/bootstrap/github-oidc.bicep \
-//     -p githubOrg=<github-org> githubRepo=<repo>
 targetScope = 'subscription'
 
 param location string = 'eastus2'
-
-@description('GitHub org or user that owns the public repo. Public repo acornsoft/gsl-demo.')
+param env string = 'dev'
+param instance string = '001'
 param githubOrg string = 'acornsoft'
-
-@description('GitHub repo name.')
 param githubRepo string = 'gsl-demo'
-
-@description('GitHub environments allowed to get a token. One for what-if, one for deploy.')
 param githubEnvironments array = [
   'demo-preview'
   'demo'
 ]
+@description('Email for budget and alert notices.')
+param alertEmail string
+@description('Monthly budget ceiling in USD. Target spend is about $12.')
+param budgetAmount int = 50
+param budgetStartDate string = '${utcNow('yyyy-MM')}-01'
+param deployGovernance bool = true
+param ownerTag string = 'gsl-cloud-platform'
+param costCenterTag string = 'cc-gsl-demo-placeholder'
 
-param tags object = {
-  workload: 'gsl'
-  env: 'dev'
-  owner: 'gsl-cloud-platform'
-  costCenter: 'cc-gsl-demo-placeholder'
+var workload = 'gsl'
+var sfx = '${workload}-${env}-${location}-${instance}'
+var tags = {
+  workload: workload
+  env: env
+  owner: ownerTag
+  costCenter: costCenterTag
+  dataClass: 'synthetic'
   managedBy: 'bicep-bootstrap'
+  'azd-env-name': env
 }
 
-var roles = {
-  contributor: 'b24988ac-6180-42a0-ab88-20f7382dd24c'
-  rbacAdmin: 'f58310d9-a9f6-439a-9e8d-f62e7b41a168'
-  // Roles the pipeline may hand out to app identities, and nothing else.
-  keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
-  blobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
-  queueDataContributor: '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
-  tableDataContributor: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
-  monitoringMetricsPublisher: '3913510d-42f4-4e42-8a64-420c390055eb'
-}
+// The only roles the pipeline may hand out (app data-plane only).
+var assignableRoleIds = [
+  '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
+  'b7e6dc6d-f1e8-4753-8033-0f276bb0955b' // Storage Blob Data Owner
+  '974c5e8b-45b9-4653-ba55-5f855dd0fb88' // Storage Queue Data Contributor
+  '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3' // Storage Table Data Contributor
+  '3913510d-42f4-4e42-8a64-420c390055eb' // Monitoring Metrics Publisher
+]
 
-var assignable = '${roles.keyVaultSecretsUser}, ${roles.blobDataOwner}, ${roles.queueDataContributor}, ${roles.tableDataContributor}, ${roles.monitoringMetricsPublisher}'
-
-// Constrained delegation: the pipeline can only create or delete assignments for the five roles above.
-var rbacCondition = '((!(ActionMatches{\'Microsoft.Authorization/roleAssignments/write\'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {${assignable}})) AND ((!(ActionMatches{\'Microsoft.Authorization/roleAssignments/delete\'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {${assignable}}))'
-
-resource rgShared 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: 'rg-gsl-dev-eastus2-001'
+resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+  name: 'rg-${sfx}'
   location: location
   tags: tags
 }
 
 module uami 'uami.bicep' = {
   name: 'github-uami'
-  scope: rgShared
+  scope: rg
   params: {
     location: location
     tags: tags
-    name: 'id-gsl-dev-eastus2-001'
+    name: 'id-${sfx}'
     subjects: [for e in githubEnvironments: 'repo:${githubOrg}/${githubRepo}:environment:${e}']
   }
 }
 
-// Contributor on the dedicated demo subscription only. Blast radius = the demo subscription.
-resource raContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, 'gsl-demo-github', roles.contributor)
-  properties: {
+module rbac 'rg-rbac.bicep' = {
+  name: 'github-rg-rbac'
+  scope: rg
+  params: {
     principalId: uami.outputs.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.contributor)
-    description: 'GSL demo GitHub Actions deploy identity'
+    assignableRoleIds: assignableRoleIds
   }
 }
 
-resource raRbacAdmin 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, 'gsl-demo-github', roles.rbacAdmin)
-  properties: {
-    principalId: uami.outputs.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.rbacAdmin)
-    condition: rbacCondition
-    conditionVersion: '2.0'
-    description: 'Constrained: may assign only app data-plane roles'
+module actionGroup '../modules/actiongroup.bicep' = {
+  name: 'actiongroup'
+  scope: rg
+  params: {
+    tags: tags
+    name: 'ag-${workload}-${env}-${instance}'
+    shortName: 'gsldevcost'
+    alertEmail: alertEmail
   }
 }
 
-// Put these three values in GitHub environment VARIABLES (not secrets, not the repo).
+module budget '../modules/budget.bicep' = {
+  name: 'budget'
+  params: {
+    name: 'budget-${workload}-${env}-${instance}'
+    amount: budgetAmount
+    startDate: budgetStartDate
+    actionGroupId: actionGroup.outputs.id
+    alertEmail: alertEmail
+  }
+}
+
+// Includes the deny policy for any non-Consumption APIM SKU.
+module policy '../modules/policy.bicep' = if (deployGovernance) {
+  name: 'policy'
+  params: {
+    allowedLocations: [ location ]
+  }
+}
+
+// Put these in GitHub environment VARIABLES (not secrets, not the repo).
 output AZURE_CLIENT_ID string = uami.outputs.clientId
 output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_SUBSCRIPTION_ID string = subscription().subscriptionId
+output AZURE_RESOURCE_GROUP string = rg.name

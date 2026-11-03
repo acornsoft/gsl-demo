@@ -1,7 +1,9 @@
 # GSL demo landing zone: validate, what-if, then gated deploy.
 # Auth: GitHub OIDC -> user-assigned managed identity (federated credential). No secrets.
 # Required GitHub *environment variables* (Settings > Environments), not secrets, not in the repo:
-#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, GSL_ALERT_EMAIL
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP
+# The pipeline identity has Contributor on the GSL RG only, so it deploys at RG scope.
+# Subscription-scoped items (RG, budget, policy, identity) come from infra/bootstrap (Owner run).
 # Environments:
 #   demo-preview : deployment branch = main only. No reviewers. Runs what-if.
 #   demo         : deployment branch = main only. Required reviewers. Runs the deploy.
@@ -24,7 +26,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  LOCATION: eastus2
   AZD_ENV_NAME: dev
 
 jobs:
@@ -57,14 +58,13 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: What-if at subscription scope
+      - name: What-if at resource-group scope
         run: |
-          az deployment sub what-if \
-            --name "gsl-demo-${{ github.run_id }}" \
-            --location "$LOCATION" \
+          az deployment group what-if \
+            --name "gsl-${{ github.run_id }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file infra/main.bicep \
-            --parameters env="$AZD_ENV_NAME" location="$LOCATION" \
-                         alertEmail="${{ vars.GSL_ALERT_EMAIL }}" deployGovernance=false \
+            --parameters infra/main.parameters.json \
             --result-format FullResourcePayloads | tee whatif.txt
       - name: Publish what-if to job summary
         run: |
@@ -87,12 +87,11 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy at subscription scope
+      - name: Deploy at resource-group scope
         run: |
-          az deployment sub create \
-            --name "gsl-demo-${{ github.run_id }}" \
-            --location "$LOCATION" \
+          az deployment group create \
+            --name "gsl-${{ github.run_id }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file infra/main.bicep \
-            --parameters env="$AZD_ENV_NAME" location="$LOCATION" \
-                         alertEmail="${{ vars.GSL_ALERT_EMAIL }}" deployGovernance=false \
+            --parameters infra/main.parameters.json \
             --output table

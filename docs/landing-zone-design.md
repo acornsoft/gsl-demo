@@ -4,10 +4,14 @@ Fictional Gotham Savings and Loan (GSL) practice model. Synthetic data only.
 
 ## Design summary
 - **Scope:** subscription `Azure via PSCB [D]` (`ca1fc4ed-67c9-445b-bcf8-17fac62afe1d`), tenant acornsoft365.com (`c21f4003-8ff9-4fdb-b804-5b2b371717f4`). The other subscription, `Azure via MCPP [P]`, must never be touched. Tenant and subscription IDs are not secrets.
-- **One dedicated, tagged resource group**, `rg-gsl-dev-eastus2-001`, in eastus2. Every resource lives in it. The only subscription-scope objects are the cost budget, the bootstrap role assignments, and the optional policy (run by an admin only, `deployGovernance=false` by default).
+- **One dedicated, tagged resource group**, `rg-gsl-dev-eastus2-001`, in eastus2. Every workload resource lives in it.
+- **Two deployment layers (least privilege):**
+  - **Bootstrap** (`infra/bootstrap/github-oidc.bicep`, subscription scope, run once by an Owner) creates everything that touches the subscription. That is the RG; the pipeline identity `id-gsl-dev-eastus2-001` and its GitHub OIDC federated credentials; the RG-scoped role assignments; the action group `ag-gsl-dev-001`; the $50 budget; and the policy definitions and assignments, including the deny for non-Consumption APIM.
+  - **Pipeline** (`infra/main.bicep`, resource-group scope, `az deployment group`) deploys only the workload resources into the RG.
+- **Pipeline identity rights:** Contributor on `rg-gsl-dev-eastus2-001` only, plus Role Based Access Control Administrator on that same RG. The second role carries an ABAC condition that allows it to create or delete assignments only for five app data-plane roles: Key Vault Secrets User, Storage Blob Data Owner, Storage Queue Data Contributor, Storage Table Data Contributor and Monitoring Metrics Publisher. It has no rights at subscription scope.
 - **Tags:** workload, env, owner, costCenter, dataClass=synthetic, managedBy, azd-env-name.
 - **Consumption or free tiers only:** APIM Consumption, Service Bus Basic, Functions Flex Consumption (FC1, scales to zero, max 40 instances), Key Vault Standard (RBAC), Log Analytics with a 0.1 GB/day cap, workspace-based App Insights, Storage Standard_LRS (needed by Functions).
-- **Identity:** no keys anywhere. Functions use managed identity for Storage, App Insights and Key Vault. Service Bus has local/SAS auth turned off. GitHub Actions signs in through OIDC to a user-assigned managed identity (`infra/bootstrap/`, a one-time owner run).
+- **Identity:** no keys anywhere. Functions use managed identity for Storage, App Insights and Key Vault. Service Bus has local/SAS auth turned off. GitHub Actions signs in through OIDC to the user-assigned managed identity.
 - **Guardrails:** a $50 monthly budget with alerts at 50/80/100% (actual) plus 100% (forecast), sent to david@acornsoft365.com and the action group. A deny policy blocks any APIM SKU other than Consumption, and another allows only serverless plans.
 - **Service Bus note:** Basic supports queues only. Move to Standard (`serviceBusSku=Standard`, about $10/month base) when ADO 2791/2793 need topics.
 
