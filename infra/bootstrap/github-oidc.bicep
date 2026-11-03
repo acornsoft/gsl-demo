@@ -14,6 +14,10 @@ param env string = 'dev'
 param instance string = '001'
 param githubOrg string = 'acornsoft'
 param githubRepo string = 'gsl-demo'
+@description('GitHub numeric owner ID. GitHub now sends OIDC subjects as repo:<owner>@<ownerId>/<repo>@<repoId>:...')
+param githubOwnerId string = '3299918'
+@description('GitHub numeric repository ID.')
+param githubRepoId string = '1444246506'
 param githubEnvironments array = [
   'demo-preview'
   'demo'
@@ -61,7 +65,7 @@ module uami 'uami.bicep' = {
     location: location
     tags: tags
     name: 'id-${sfx}'
-    subjects: [for e in githubEnvironments: 'repo:${githubOrg}/${githubRepo}:environment:${e}']
+    subjects: [for e in githubEnvironments: 'repo:${githubOrg}@${githubOwnerId}/${githubRepo}@${githubRepoId}:environment:${e}']
   }
 }
 

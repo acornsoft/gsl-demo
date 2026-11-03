@@ -11,7 +11,7 @@
 - [ ] Nothing is deployed to or changed in `Azure via MCPP [P]`.
 
 **AB#2777: Configure GitHub OIDC federated credential**
-- [ ] Given the one-time Owner bootstrap, then `id-gsl-dev-eastus-001` exists in `rg-gsl-dev-eastus-001` with federated credentials whose issuer is `https://token.actions.githubusercontent.com`, audience is `api://AzureADTokenExchange`, and subjects are `repo:acornsoft/gsl-demo:environment:demo-preview` and `:environment:demo`.
+- [ ] Given the one-time Owner bootstrap, then `id-gsl-dev-eastus-001` exists in `rg-gsl-dev-eastus-001` with federated credentials whose issuer is `https://token.actions.githubusercontent.com`, audience is `api://AzureADTokenExchange`, and subjects are `repo:acornsoft@3299918/gsl-demo@1444246506:environment:demo-preview` and `repo:acornsoft@3299918/gsl-demo@1444246506:environment:demo` (GitHub's ID-based subject format; owner and repo IDs are bootstrap parameters).
 - [ ] The identity has no client secret or certificate. `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and `AZURE_RESOURCE_GROUP` are stored as GitHub environment **variables**.
 - [ ] `az role assignment list --assignee <clientId> --all` shows exactly two assignments, both scoped to `/subscriptions/ca1fc4ed-…/resourceGroups/rg-gsl-dev-eastus-001`. One is Contributor. The other is Role Based Access Control Administrator, with a condition limiting it to the five app data-plane roles. There are no subscription-scope assignments.
 - [ ] Given the pipeline identity, when it tries to assign Owner or Contributor, or to deploy at subscription scope or into another RG, then Azure denies it with AuthorizationFailed.
