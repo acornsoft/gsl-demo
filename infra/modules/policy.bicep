@@ -51,6 +51,7 @@ resource paLocations 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
   properties: {
     displayName: 'GSL demo: allowed locations'
     policyDefinitionId: defId(builtIn.allowedLocations)
+    definitionVersion: '1.*.*' // pinned to the value Azure stores
     parameters: {
       listOfAllowedLocations: {
         value: allowedLocations
@@ -64,6 +65,7 @@ resource paRgLocations 'Microsoft.Authorization/policyAssignments@2024-04-01' = 
   properties: {
     displayName: 'GSL demo: allowed resource group locations'
     policyDefinitionId: defId(builtIn.allowedRgLocations)
+    definitionVersion: '1.*.*' // pinned to the value Azure stores
     parameters: {
       listOfAllowedLocations: {
         value: allowedLocations
@@ -77,6 +79,7 @@ resource paRgTags 'Microsoft.Authorization/policyAssignments@2024-04-01' = [for 
   properties: {
     displayName: 'GSL demo: require tag ${t} on the GSL resource group'
     policyDefinitionId: defId(builtIn.requireRgTag)
+    definitionVersion: '1.*.*' // pinned to the value Azure stores
     parameters: {
       tagName: {
         value: t
@@ -90,6 +93,7 @@ resource paBlockedTypes 'Microsoft.Authorization/policyAssignments@2024-04-01' =
   properties: {
     displayName: 'GSL demo: block expensive resource types'
     policyDefinitionId: defId(builtIn.notAllowedTypes)
+    definitionVersion: '2.*.*' // pinned to the value Azure stores
     parameters: {
       listOfResourceTypesNotAllowed: {
         value: blockedResourceTypes
@@ -103,6 +107,7 @@ resource paStoragePublic 'Microsoft.Authorization/policyAssignments@2024-04-01' 
   properties: {
     displayName: 'GSL demo: storage public access disallowed'
     policyDefinitionId: defId(builtIn.storageNoPublicBlob)
+    definitionVersion: '3.*.*' // pinned to the value Azure stores
     parameters: {
       effect: {
         value: 'Deny'
@@ -116,6 +121,7 @@ resource paStorageSharedKey 'Microsoft.Authorization/policyAssignments@2024-04-0
   properties: {
     displayName: 'GSL demo: storage shared key access prevented'
     policyDefinitionId: defId(builtIn.storageNoSharedKey)
+    definitionVersion: '2.*.*' // pinned to the value Azure stores
     parameters: {
       effect: {
         value: 'Deny'
@@ -130,6 +136,7 @@ resource paKvRbac 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
   properties: {
     displayName: 'GSL demo: Key Vault uses RBAC (audit)'
     policyDefinitionId: defId(builtIn.kvRbac)
+    definitionVersion: '1.*.*' // pinned to the value Azure stores
   }
 }
 
@@ -138,6 +145,7 @@ resource paKvSoftDelete 'Microsoft.Authorization/policyAssignments@2024-04-01' =
   properties: {
     displayName: 'GSL demo: Key Vault soft delete (audit)'
     policyDefinitionId: defId(builtIn.kvSoftDelete)
+    definitionVersion: '3.*.*' // pinned to the value Azure stores
   }
 }
 
@@ -146,5 +154,6 @@ resource paPlanSku 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
   properties: {
     displayName: 'GSL demo: App Service plans must be Flex Consumption or Consumption'
     policyDefinitionId: planSkuDefinitionId
+    definitionVersion: '1.*.*' // pinned to the value Azure stores
   }
 }

@@ -2,12 +2,16 @@
 // Assignments are made at GSL resource-group scope in policy.bicep.
 targetScope = 'subscription'
 
-resource defPlanSku 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
+resource defPlanSku 'Microsoft.Authorization/policyDefinitions@2025-01-01' = {
   name: 'gsl-demo-serverless-plans-only'
   properties: {
     displayName: 'GSL demo: App Service plans must be Flex Consumption or Consumption'
     description: 'Blocks dedicated and Premium plans that bill while idle.'
     policyType: 'Custom'
+    version: '1.0.0' // pinned to the value Azure stores
+    versions: [
+      '1.0.0'
+    ]
     mode: 'All'
     metadata: {
       category: 'Cost'

@@ -26,7 +26,10 @@ param githubEnvironments array = [
 param alertEmail string
 @description('Monthly budget ceiling in USD. Target spend is about $12.')
 param budgetAmount int = 50
-param budgetStartDate string = '${utcNow('yyyy-MM')}-01'
+@description('Fixed budget start (the deployed value). Not utcNow, so re-runs show no drift.')
+param budgetStartDate string = '2026-11-01T00:00:00Z'
+@description('Budget end date as stored by Azure.')
+param budgetEndDate string = '2036-11-01T00:00:00Z'
 param deployGovernance bool = true
 param ownerTag string = 'gsl-cloud-platform'
 param costCenterTag string = 'cc-gsl-demo-placeholder'
@@ -95,6 +98,7 @@ module budget '../modules/budget.bicep' = {
     name: 'budget-${workload}-${env}-${instance}'
     amount: budgetAmount
     startDate: budgetStartDate
+    endDate: budgetEndDate
     actionGroupId: actionGroup.outputs.id
     alertEmail: alertEmail
   }
