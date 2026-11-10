@@ -3,9 +3,6 @@
 // Deployed by the Owner bootstrap when deployGovernance = true.
 targetScope = 'resourceGroup'
 
-@description('Resource ID of the APIM Consumption-only policy definition.')
-param apimSkuDefinitionId string
-
 @description('Resource ID of the serverless-plans-only policy definition.')
 param planSkuDefinitionId string
 
@@ -141,14 +138,6 @@ resource paKvSoftDelete 'Microsoft.Authorization/policyAssignments@2024-04-01' =
   properties: {
     displayName: 'GSL demo: Key Vault soft delete (audit)'
     policyDefinitionId: defId(builtIn.kvSoftDelete)
-  }
-}
-
-resource paApimSku 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
-  name: 'gsl-demo-apim-consumption'
-  properties: {
-    displayName: 'GSL demo: API Management must use the Consumption tier'
-    policyDefinitionId: apimSkuDefinitionId
   }
 }
 

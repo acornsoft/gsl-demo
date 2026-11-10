@@ -23,10 +23,6 @@ param instance string = '001'
 param ownerTag string = 'gsl-cloud-platform'
 param costCenterTag string = 'cc-gsl-demo-placeholder'
 
-
-@description('APIM publisher email (shown on the APIM instance).')
-param apimPublisherEmail string
-
 @description('Log Analytics daily cap in GB (0.1 GB/day stays inside the 5 GB/month free grant).')
 param logDailyCapGb string = '0.1'
 
@@ -43,7 +39,6 @@ var names = {
   st: toLower('st${workload}${env}${regionShort}${instance}')
   asp: 'asp-${sfx}'
   func: 'func-${sfx}'
-  apim: 'apim-${sfx}'
   sbns: 'sbns-${sfx}'
   sbq: 'sbq-${workload}-${env}-${instance}'
 }
@@ -104,16 +99,6 @@ module serviceBus 'modules/servicebus.bicep' = {
   }
 }
 
-module apim 'modules/apim.bicep' = {
-  name: 'apim'
-  params: {
-    location: location
-    tags: tags
-    name: names.apim
-    publisherEmail: apimPublisherEmail
-    publisherName: 'GSL Demo (fictional)'
-  }
-}
 
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
@@ -121,4 +106,3 @@ output AZURE_RESOURCE_GROUP string = resourceGroup().name
 output AZURE_FUNCTION_NAME string = functionApp.outputs.name
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output SERVICE_BUS_NAMESPACE string = serviceBus.outputs.name
-output APIM_GATEWAY_URL string = apim.outputs.gatewayUrl
