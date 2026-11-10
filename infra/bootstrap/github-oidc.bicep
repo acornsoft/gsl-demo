@@ -26,7 +26,10 @@ param githubEnvironments array = [
 param alertEmail string
 @description('Monthly budget ceiling in USD. Target spend is about $12.')
 param budgetAmount int = 50
-param budgetStartDate string = '${utcNow('yyyy-MM')}-01'
+@description('Fixed budget start (the deployed value). Not utcNow, so re-runs show no drift.')
+param budgetStartDate string = '2026-11-01T00:00:00Z'
+@description('Budget end date as stored by Azure.')
+param budgetEndDate string = '2036-11-01T00:00:00Z'
 param deployGovernance bool = true
 param ownerTag string = 'gsl-cloud-platform'
 param costCenterTag string = 'cc-gsl-demo-placeholder'
@@ -95,6 +98,7 @@ module budget '../modules/budget.bicep' = {
     name: 'budget-${workload}-${env}-${instance}'
     amount: budgetAmount
     startDate: budgetStartDate
+    endDate: budgetEndDate
     actionGroupId: actionGroup.outputs.id
     alertEmail: alertEmail
   }
@@ -106,14 +110,12 @@ module policyDefs '../modules/policy-defs.bicep' = if (deployGovernance) {
 }
 
 // ALL policy assignments are scoped to the GSL resource group only, never the subscription.
-// Includes the deny for any non-Consumption APIM SKU. The existing subscription
-// "Allowed locations" assignments (b666060a..., 96048b7f...) are not touched.
+// The existing subscription "Allowed locations" assignments (b666060a..., 96048b7f...) are not touched.
 module policy '../modules/policy.bicep' = if (deployGovernance) {
   name: 'policy'
   scope: rg
   params: {
     allowedLocations: [ location ]
-    apimSkuDefinitionId: policyDefs!.outputs.apimSkuDefinitionId
     planSkuDefinitionId: policyDefs!.outputs.planSkuDefinitionId
   }
 }
