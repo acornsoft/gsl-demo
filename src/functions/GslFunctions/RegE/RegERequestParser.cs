@@ -31,7 +31,15 @@ public static class RegERequestParser
             var (posOrForeign, e2) = ReadBool(root, "posOrForeign");
             if (e2 is not null) return (null, e2);
 
-            return (new RegEDeadlineRequest(noticeDate, newAccount, posOrForeign), null);
+            string? disputeId = null;
+            if (TryGet(root, "disputeId", out var di) && di.ValueKind != JsonValueKind.Null)
+            {
+                if (di.ValueKind != JsonValueKind.String || !DisputeId.IsValid(di.GetString()))
+                    return (null, "disputeId must look like GSL-DSP-000123 (synthetic ids only).");
+                disputeId = di.GetString();
+            }
+
+            return (new RegEDeadlineRequest(noticeDate, newAccount, posOrForeign, disputeId), null);
         }
     }
 

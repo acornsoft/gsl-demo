@@ -1,13 +1,15 @@
-using System.Text.Json;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using Gsl.Functions.RegE;
 
 namespace Gsl.Functions.Messaging;
 
+public sealed record PublishResult(string Status, string? MessageId = null);
+
 public interface IDisputeEventPublisher
 {
-    /// <summary>Returns "sent", "skipped" (not configured) or "failed: ...". Never throws.</summary>
-    Task<string> PublishAsync(object payload, CancellationToken ct = default);
+    /// <summary>Status is "sent", "skipped" (not configured) or "failed: ...". Never throws.</summary>
+    Task<PublishResult> PublishAsync(RegEDeadlines deadlines, string disputeId, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -15,6 +17,8 @@ public interface IDisputeEventPublisher
 /// Enabled only when the app setting ServiceBusConnection__fullyQualifiedNamespace is present,
 /// e.g. sbns-gsl-dev-eastus-001.servicebus.windows.net. Queue name from SERVICEBUS_QUEUE_NAME
 /// (default sbq-gsl-dev-001). The identity needs "Azure Service Bus Data Sender" on the namespace.
+/// Each message is stamped by <see cref="RegEDeadlinesMessage.Create"/>: messageId, correlationId = dispute id,
+/// subject reg-e.deadlines.computed, and application properties.
 /// </summary>
 public sealed class ServiceBusDisputeEventPublisher : IDisputeEventPublisher, IAsyncDisposable
 {
@@ -34,22 +38,18 @@ public sealed class ServiceBusDisputeEventPublisher : IDisputeEventPublisher, IA
 
     public bool Enabled => _sender is not null;
 
-    public async Task<string> PublishAsync(object payload, CancellationToken ct = default)
+    public async Task<PublishResult> PublishAsync(RegEDeadlines deadlines, string disputeId, CancellationToken ct = default)
     {
-        if (_sender is null) return "skipped";
+        if (_sender is null) return new PublishResult("skipped");
         try
         {
-            var msg = new ServiceBusMessage(JsonSerializer.SerializeToUtf8Bytes(payload))
-            {
-                ContentType = "application/json",
-                Subject = "gsl.regE.deadlinesCalculated",
-            };
+            var msg = RegEDeadlinesMessage.Create(deadlines, disputeId);
             await _sender.SendMessageAsync(msg, ct);
-            return "sent";
+            return new PublishResult("sent", msg.MessageId);
         }
         catch (Exception ex)
         {
-            return $"failed: {ex.GetType().Name}";
+            return new PublishResult($"failed: {ex.GetType().Name}");
         }
     }
 

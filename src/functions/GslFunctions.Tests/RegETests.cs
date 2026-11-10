@@ -111,6 +111,9 @@ public class PublisherTests
         Environment.SetEnvironmentVariable("ServiceBusConnection__fullyQualifiedNamespace", null);
         await using var p = ServiceBusDisputeEventPublisher.FromEnvironment();
         Assert.False(p.Enabled);
-        Assert.Equal("skipped", await p.PublishAsync(new { x = 1 }));
+        var d = RegEDeadlineCalculator.Calculate(new RegEDeadlineRequest(new DateOnly(2026, 11, 9), false, false));
+        var r = await p.PublishAsync(d, "GSL-DSP-000123");
+        Assert.Equal("skipped", r.Status);
+        Assert.Null(r.MessageId);
     }
 }

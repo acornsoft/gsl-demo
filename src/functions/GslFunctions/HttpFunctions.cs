@@ -38,11 +38,13 @@ public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<Http
         }
 
         var result = RegEDeadlineCalculator.Calculate(request);
-        var serviceBus = await publisher.PublishAsync(result);
-        log.LogInformation("Reg E deadlines calculated; serviceBus={ServiceBus}", serviceBus);
+        var disputeId = request.DisputeId ?? DisputeId.NewSynthetic();
+        var publish = await publisher.PublishAsync(result, disputeId);
+        log.LogInformation("Reg E deadlines calculated {DisputeId}; serviceBus={ServiceBus} messageId={MessageId}",
+            disputeId, publish.Status, publish.MessageId);
 
         var ok = req.CreateResponse(HttpStatusCode.OK);
-        await ok.WriteAsJsonAsync(new { deadlines = result, serviceBus });
+        await ok.WriteAsJsonAsync(new { disputeId, deadlines = result, serviceBus = publish.Status, messageId = publish.MessageId });
         return ok;
     }
 }

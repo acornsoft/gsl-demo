@@ -1,6 +1,6 @@
 namespace Gsl.Functions.RegE;
 
-public sealed record RegEDeadlineRequest(DateOnly NoticeDate, bool NewAccount, bool PosOrForeign);
+public sealed record RegEDeadlineRequest(DateOnly NoticeDate, bool NewAccount, bool PosOrForeign, string? DisputeId = null);
 
 public sealed record RegEDeadlines(
     DateOnly NoticeDate,
