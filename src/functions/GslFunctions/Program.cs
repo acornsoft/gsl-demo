@@ -8,7 +8,8 @@ var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices(services =>
     {
-        services.AddApplicationInsightsTelemetryWorkerService();
+        // Adaptive sampling off: RegEDisputeTracked is an audit-style trace and demo volume is tiny.
+        services.AddApplicationInsightsTelemetryWorkerService(options => options.EnableAdaptiveSampling = false);
         services.ConfigureFunctionsApplicationInsights();
         // Opt-in Service Bus publisher. No-op unless ServiceBusConnection__fullyQualifiedNamespace is set.
         services.AddSingleton<IDisputeEventPublisher>(_ => ServiceBusDisputeEventPublisher.FromEnvironment());
