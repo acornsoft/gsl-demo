@@ -419,6 +419,30 @@ public class FunctionNameTests
     }
 
     [Fact]
+    public void HttpTriggersAreAnonymousAtTheFunctionLevel()
+    {
+        // Entra Easy Auth (authsettingsV2) is the gate for CalculateRegEDeadlines.
+        // Function keys are not used. /api/health is excluded at the platform.
+        var health = typeof(HttpFunctions).GetMethod(nameof(HttpFunctions.CheckHealth))!
+            .GetParameters()[0].GetCustomAttributes(typeof(HttpTriggerAttribute), false)
+            .Cast<HttpTriggerAttribute>().Single();
+        var calc = typeof(HttpFunctions).GetMethod(nameof(HttpFunctions.CalculateRegEDeadlines))!
+            .GetParameters()[0].GetCustomAttributes(typeof(HttpTriggerAttribute), false)
+            .Cast<HttpTriggerAttribute>().Single();
+        Assert.Equal(AuthorizationLevel.Anonymous, health.AuthLevel);
+        Assert.Equal(AuthorizationLevel.Anonymous, calc.AuthLevel);
+    }
+
+    [Fact]
+    public void ConsumerHasNoHttpTrigger()
+    {
+        var method = typeof(RegEDisputeConsumer).GetMethod(nameof(RegEDisputeConsumer.Run))!;
+        Assert.Empty(method.GetParameters().SelectMany(p => p.GetCustomAttributes(typeof(HttpTriggerAttribute), false)));
+        Assert.DoesNotContain(typeof(RegEDisputeConsumer).GetMethods(), m =>
+            m.GetParameters().Any(p => p.GetCustomAttributes(typeof(HttpTriggerAttribute), false).Length > 0));
+    }
+
+    [Fact]
     public void ConsumerNameIsUnchanged()
     {
         var attr = typeof(RegEDisputeConsumer).GetMethod(nameof(RegEDisputeConsumer.Run))!

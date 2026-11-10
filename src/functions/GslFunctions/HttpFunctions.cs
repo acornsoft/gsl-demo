@@ -10,6 +10,9 @@ namespace Gsl.Functions;
 
 public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<HttpFunctions> log)
 {
+    // Function-level Anonymous is intentional: Entra Easy Auth (authsettingsV2) is the HTTP gate.
+    // CalculateRegEDeadlines requires a bearer token; /api/health is excluded at the platform.
+
     private static readonly string Version =
         typeof(HttpFunctions).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0]
         ?? "0.0.0";

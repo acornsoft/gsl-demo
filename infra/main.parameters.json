@@ -2,6 +2,7 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "env": { "value": "dev" }
+    "env": { "value": "dev" },
+    "entraApiClientId": { "value": "af4c9b0f-8f2b-4bf3-8f1b-05465f9708ba" }
   }
 }

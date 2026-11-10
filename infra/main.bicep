@@ -30,6 +30,9 @@ param logDailyCapGb string = '0.1'
 @description('Basic = queues only. Switch to Standard when ADO 2791/2793 need topics.')
 param serviceBusSku string = 'Basic'
 
+@description('Entra app registration client ID for Function App Easy Auth (API audience). Not a secret.')
+param entraApiClientId string = ''
+
 var workload = 'gsl'
 var sfx = '${workload}-${env}-${location}-${instance}'
 var names = {
@@ -98,6 +101,7 @@ module functionApp 'modules/functionapp.bicep' = {
     keyVaultResourceGroup: resourceGroup().name
     serviceBusNamespaceName: serviceBus.outputs.name
     serviceBusQueueName: names.sbq
+    entraApiClientId: entraApiClientId
   }
 }
 
@@ -108,3 +112,4 @@ output AZURE_RESOURCE_GROUP string = resourceGroup().name
 output AZURE_FUNCTION_NAME string = functionApp.outputs.name
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output SERVICE_BUS_NAMESPACE string = serviceBus.outputs.name
+output ENTRA_API_CLIENT_ID string = entraApiClientId

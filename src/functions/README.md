@@ -4,7 +4,13 @@
 Synthetic data only. Not legal advice.
 
 Runs on `func-gsl-dev-eastus-001` (Flex Consumption FC1, dotnet-isolated 8.0).
-Auth level: **anonymous** (no keys) for the demo.
+Auth for HTTP: **Entra ID Easy Auth** (App Service Authentication) on the acornsoft365.com tenant.
+`CalculateRegEDeadlines` and any other HTTP path that can enqueue a message require a bearer token
+for the API app registration `app-gsl-dev-api` (client id `af4c9b0f-8f2b-4bf3-8f1b-05465f9708ba`).
+Unauthenticated or invalid tokens get HTTP 401. `/api/health` (`CheckHealth`) is excluded and stays
+anonymous; it returns only `{status, version, timestamp}`. The queue trigger `regEDisputeConsumer`
+has no HTTP surface; it uses the Function App managed identity (no connection string or SAS).
+
 
 ## Endpoints
 
@@ -35,13 +41,27 @@ response shows `"serviceBus":"skipped"`.
 
 ```bash
 BASE=https://func-gsl-dev-eastus-001.azurewebsites.net
+CLIENT_ID=af4c9b0f-8f2b-4bf3-8f1b-05465f9708ba
+
+# Health is anonymous
 curl -s $BASE/api/health
-curl -s -X POST $BASE/api/disputes/reg-e/deadlines -H 'Content-Type: application/json' \
+
+# Get a token for the API audience (Azure CLI is pre-authorized on the app registration).
+# --resource and --scope both work and return a v2 token.
+TOKEN=$(az account get-access-token --resource api://$CLIENT_ID --query accessToken -o tsv)
+# TOKEN=$(az account get-access-token --scope api://$CLIENT_ID/.default --query accessToken -o tsv)
+
+# CalculateRegEDeadlines requires the bearer token; without it the platform returns 401.
+curl -s -X POST $BASE/api/disputes/reg-e/deadlines \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"noticeDate":"2026-11-09","newAccount":false,"posOrForeign":false}'
-curl -s -X POST $BASE/api/disputes/reg-e/deadlines -H 'Content-Type: application/json' \
+curl -s -X POST $BASE/api/disputes/reg-e/deadlines \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"noticeDate":"2026-11-09","newAccount":true,"posOrForeign":true}'
-curl -s -i -X POST $BASE/api/disputes/reg-e/deadlines -H 'Content-Type: application/json' -d '{}'   # 400
-curl -s -X POST $BASE/api/disputes/reg-e/deadlines -H 'Content-Type: application/json' \
+curl -s -i -X POST $BASE/api/disputes/reg-e/deadlines \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}'   # 400
+curl -s -X POST $BASE/api/disputes/reg-e/deadlines \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: demo-retry-1' \
   -d '{"noticeDate":"2026-11-09","newAccount":false,"posOrForeign":false,"disputeId":"GSL-DSP-000123"}'
 ```
