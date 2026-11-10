@@ -14,8 +14,8 @@ public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<Http
         typeof(HttpFunctions).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0]
         ?? "0.0.0";
 
-    [Function("health")]
-    public async Task<HttpResponseData> Health(
+    [Function("GetHealth")]
+    public async Task<HttpResponseData> GetHealth(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
         var res = req.CreateResponse(HttpStatusCode.OK);
@@ -23,8 +23,8 @@ public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<Http
         return res;
     }
 
-    [Function("regEDeadlines")]
-    public async Task<HttpResponseData> RegEDeadlines(
+    [Function("CalculateRegEDeadlines")]
+    public async Task<HttpResponseData> CalculateRegEDeadlines(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "disputes/reg-e/deadlines")] HttpRequestData req)
     {
         var body = await new StreamReader(req.Body).ReadToEndAsync();
