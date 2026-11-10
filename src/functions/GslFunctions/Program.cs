@@ -13,6 +13,8 @@ var host = new HostBuilder()
         services.ConfigureFunctionsApplicationInsights();
         // Opt-in Service Bus publisher. No-op unless ServiceBusConnection__fullyQualifiedNamespace is set.
         services.AddSingleton<IDisputeEventPublisher>(_ => ServiceBusDisputeEventPublisher.FromEnvironment());
+        // In-memory, process-local dedupe for the consumer. See InMemoryTrackedDisputeStore limits.
+        services.AddSingleton<ITrackedDisputeStore, InMemoryTrackedDisputeStore>();
     })
     .ConfigureLogging(logging =>
     {

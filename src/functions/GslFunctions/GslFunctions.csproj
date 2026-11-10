@@ -9,6 +9,9 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="GslFunctions.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />

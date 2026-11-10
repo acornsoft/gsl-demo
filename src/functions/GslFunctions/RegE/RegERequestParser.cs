@@ -35,7 +35,7 @@ public static class RegERequestParser
             if (TryGet(root, "disputeId", out var di) && di.ValueKind != JsonValueKind.Null)
             {
                 if (di.ValueKind != JsonValueKind.String || !DisputeId.IsValid(di.GetString()))
-                    return (null, "disputeId must look like GSL-DSP-000123 (synthetic ids only).");
+                    return (null, "disputeId must look like GSL-DSP-000123 or GSL-DSP- plus a 26-character ULID (synthetic ids only).");
                 disputeId = di.GetString();
             }
 

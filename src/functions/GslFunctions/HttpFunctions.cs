@@ -39,12 +39,23 @@ public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<Http
 
         var result = RegEDeadlineCalculator.Calculate(request);
         var disputeId = request.DisputeId ?? DisputeId.NewSynthetic();
-        var publish = await publisher.PublishAsync(result, disputeId);
+        var messageId = DeterministicMessageId.ForRequest(ReadIdempotencyKey(req), disputeId, request);
+        var publish = await publisher.PublishAsync(result, disputeId, messageId);
         log.LogInformation("Reg E deadlines calculated {DisputeId}; serviceBus={ServiceBus} messageId={MessageId}",
             disputeId, publish.Status, publish.MessageId);
 
         var ok = req.CreateResponse(HttpStatusCode.OK);
         await ok.WriteAsJsonAsync(new { disputeId, deadlines = result, serviceBus = publish.Status, messageId = publish.MessageId });
         return ok;
+    }
+
+    private static string? ReadIdempotencyKey(HttpRequestData req)
+    {
+        if (req.Headers.TryGetValues("Idempotency-Key", out var values))
+        {
+            var key = values.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(key)) return key.Trim();
+        }
+        return null;
     }
 }

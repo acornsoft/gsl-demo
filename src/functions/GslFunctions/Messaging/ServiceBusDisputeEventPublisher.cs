@@ -9,7 +9,7 @@ public sealed record PublishResult(string Status, string? MessageId = null);
 public interface IDisputeEventPublisher
 {
     /// <summary>Status is "sent", "skipped" (not configured) or "failed: ...". Never throws.</summary>
-    Task<PublishResult> PublishAsync(RegEDeadlines deadlines, string disputeId, CancellationToken ct = default);
+    Task<PublishResult> PublishAsync(RegEDeadlines deadlines, string disputeId, string? messageId = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -38,12 +38,12 @@ public sealed class ServiceBusDisputeEventPublisher : IDisputeEventPublisher, IA
 
     public bool Enabled => _sender is not null;
 
-    public async Task<PublishResult> PublishAsync(RegEDeadlines deadlines, string disputeId, CancellationToken ct = default)
+    public async Task<PublishResult> PublishAsync(RegEDeadlines deadlines, string disputeId, string? messageId = null, CancellationToken ct = default)
     {
         if (_sender is null) return new PublishResult("skipped");
         try
         {
-            var msg = RegEDeadlinesMessage.Create(deadlines, disputeId);
+            var msg = RegEDeadlinesMessage.Create(deadlines, disputeId, messageId);
             await _sender.SendMessageAsync(msg, ct);
             return new PublishResult("sent", msg.MessageId);
         }

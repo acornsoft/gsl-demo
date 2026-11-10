@@ -26,7 +26,7 @@ public static class RegEDeadlinesMessage
     {
         ArgumentNullException.ThrowIfNull(d);
         if (!DisputeId.IsValid(disputeId))
-            throw new ArgumentException("disputeId must look like GSL-DSP-000123.", nameof(disputeId));
+            throw new ArgumentException("disputeId must look like GSL-DSP-000123 or GSL-DSP- plus a 26-character ULID.", nameof(disputeId));
 
         var body = new
         {
@@ -47,7 +47,7 @@ public static class RegEDeadlinesMessage
 
         var msg = new ServiceBusMessage(JsonSerializer.SerializeToUtf8Bytes(body, Json))
         {
-            MessageId = messageId ?? Guid.NewGuid().ToString("N"),
+            MessageId = messageId ?? DeterministicMessageId.ForRequest(null, disputeId, d.NoticeDate, d.NewAccount, d.PosOrForeign),
             CorrelationId = disputeId,
             Subject = Subject,
             ContentType = ContentType,
@@ -120,17 +120,17 @@ public static class RegEDeadlinesValidator
             if (TryGet(root, "disputeId", out var idEl) && idEl.ValueKind != JsonValueKind.Null)
             {
                 if (idEl.ValueKind != JsonValueKind.String)
-                    return TrackingDecision.Reject(DeadLetterReasons.InvalidDisputeId, "disputeId must be a string like GSL-DSP-000123.");
+                    return TrackingDecision.Reject(DeadLetterReasons.InvalidDisputeId, "disputeId must be a string like GSL-DSP-000123 or GSL-DSP- plus a 26-character ULID.");
                 bodyId = idEl.GetString();
             }
             var corr = string.IsNullOrWhiteSpace(correlationId) ? null : correlationId;
             if (bodyId is null && corr is null)
                 return TrackingDecision.Reject(DeadLetterReasons.MissingDisputeId,
-                    "No dispute id: set correlationId (and body.disputeId) to a synthetic id like GSL-DSP-000123, then resubmit.");
+                    "No dispute id: set correlationId (and body.disputeId) to a synthetic id like GSL-DSP-000123 or GSL-DSP- plus a 26-character ULID, then resubmit.");
             if (bodyId is not null && !DisputeId.IsValid(bodyId))
-                return TrackingDecision.Reject(DeadLetterReasons.InvalidDisputeId, $"body.disputeId '{Trim(bodyId)}' does not match GSL-DSP-nnnnnn.");
+                return TrackingDecision.Reject(DeadLetterReasons.InvalidDisputeId, $"body.disputeId '{Trim(bodyId)}' does not match GSL-DSP-nnnnnn or GSL-DSP- plus a 26-character ULID.");
             if (corr is not null && !DisputeId.IsValid(corr))
-                return TrackingDecision.Reject(DeadLetterReasons.InvalidDisputeId, $"correlationId '{Trim(corr)}' does not match GSL-DSP-nnnnnn.");
+                return TrackingDecision.Reject(DeadLetterReasons.InvalidDisputeId, $"correlationId '{Trim(corr)}' does not match GSL-DSP-nnnnnn or GSL-DSP- plus a 26-character ULID.");
             if (bodyId is not null && corr is not null && !string.Equals(bodyId, corr, StringComparison.Ordinal))
                 return TrackingDecision.Reject(DeadLetterReasons.DisputeIdMismatch, $"body.disputeId {bodyId} differs from correlationId {corr}.");
             var disputeId = bodyId ?? corr!;
