@@ -3,8 +3,10 @@ targetScope = 'subscription'
 
 param name string
 param amount int
-@description('First day of a month, yyyy-MM-dd.')
+@description('First day of a month (ISO 8601, e.g. 2026-11-01T00:00:00Z).')
 param startDate string
+@description('End of the budget period (ISO 8601). Matches the value Azure stored.')
+param endDate string
 param actionGroupId string
 param alertEmail string
 param actualThresholds array = [ 50, 80, 100 ]
@@ -29,6 +31,7 @@ resource budget 'Microsoft.Consumption/budgets@2023-11-01' = {
     timeGrain: 'Monthly'
     timePeriod: {
       startDate: startDate
+      endDate: endDate
     }
     notifications: union(actual, {
       'forecast${forecastThreshold}': {

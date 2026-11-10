@@ -23,16 +23,15 @@ param instance string = '001'
 param ownerTag string = 'gsl-cloud-platform'
 param costCenterTag string = 'cc-gsl-demo-placeholder'
 
-
-@description('APIM publisher email (shown on the APIM instance).')
-param apimPublisherEmail string
-
 @description('Log Analytics daily cap in GB (0.1 GB/day stays inside the 5 GB/month free grant).')
 param logDailyCapGb string = '0.1'
 
 @allowed([ 'Basic', 'Standard' ])
 @description('Basic = queues only. Switch to Standard when ADO 2791/2793 need topics.')
 param serviceBusSku string = 'Basic'
+
+@description('Entra app registration client ID for Function App Easy Auth (API audience). Not a secret.')
+param entraApiClientId string = ''
 
 var workload = 'gsl'
 var sfx = '${workload}-${env}-${location}-${instance}'
@@ -43,7 +42,6 @@ var names = {
   st: toLower('st${workload}${env}${regionShort}${instance}')
   asp: 'asp-${sfx}'
   func: 'func-${sfx}'
-  apim: 'apim-${sfx}'
   sbns: 'sbns-${sfx}'
   sbq: 'sbq-${workload}-${env}-${instance}'
 }
@@ -78,6 +76,17 @@ module keyVault 'modules/keyvault.bicep' = {
   }
 }
 
+module serviceBus 'modules/servicebus.bicep' = {
+  name: 'servicebus'
+  params: {
+    location: location
+    tags: tags
+    name: names.sbns
+    skuName: serviceBusSku
+    queueNames: [ names.sbq ]
+  }
+}
+
 module functionApp 'modules/functionapp.bicep' = {
   name: 'functionapp'
   params: {
@@ -90,30 +99,12 @@ module functionApp 'modules/functionapp.bicep' = {
     appInsightsResourceGroup: resourceGroup().name
     keyVaultName: keyVault.outputs.name
     keyVaultResourceGroup: resourceGroup().name
+    serviceBusNamespaceName: serviceBus.outputs.name
+    serviceBusQueueName: names.sbq
+    entraApiClientId: entraApiClientId
   }
 }
 
-module serviceBus 'modules/servicebus.bicep' = {
-  name: 'servicebus'
-  params: {
-    location: location
-    tags: tags
-    name: names.sbns
-    skuName: serviceBusSku
-    queueNames: [ names.sbq ]
-  }
-}
-
-module apim 'modules/apim.bicep' = {
-  name: 'apim'
-  params: {
-    location: location
-    tags: tags
-    name: names.apim
-    publisherEmail: apimPublisherEmail
-    publisherName: 'GSL Demo (fictional)'
-  }
-}
 
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
@@ -121,4 +112,4 @@ output AZURE_RESOURCE_GROUP string = resourceGroup().name
 output AZURE_FUNCTION_NAME string = functionApp.outputs.name
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output SERVICE_BUS_NAMESPACE string = serviceBus.outputs.name
-output APIM_GATEWAY_URL string = apim.outputs.gatewayUrl
+output ENTRA_API_CLIENT_ID string = entraApiClientId

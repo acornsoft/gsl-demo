@@ -12,7 +12,7 @@ name: deploy-demo-landing-zone
 on:
   pull_request:
     branches: [main]
-    paths: ['infra/**', 'azure.yaml', '.github/workflows/deploy.yml']
+    paths: ['infra/**', 'azure.yaml', '.github/workflows/deploy.yml', 'src/functions/**']
   push:
     branches: [main]
     paths: ['infra/**', 'azure.yaml', '.github/workflows/deploy.yml']
@@ -29,6 +29,22 @@ env:
   AZD_ENV_NAME: dev
 
 jobs:
+  test:
+    name: Build and test functions
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/functions/global.json
+      - name: dotnet build and test
+        working-directory: src/functions
+        run: |
+          dotnet build --configuration Release
+          dotnet test --configuration Release --no-build
+
   validate:
     name: Build and lint Bicep (no Azure login)
     runs-on: ubuntu-latest
