@@ -12,6 +12,14 @@ param appInsightsResourceGroup string
 param keyVaultName string
 param keyVaultResourceGroup string
 
+@description('Service Bus namespace for identity-based connection (no connection string).')
+param serviceBusNamespaceName string
+param serviceBusQueueName string
+
+var serviceBusFqdn = '${serviceBusNamespaceName}.servicebus.windows.net'
+var serviceBusDataSender = '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
+var serviceBusDataReceiver = '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
+
 @allowed([
   'dotnet-isolated'
   'python'
@@ -102,6 +110,18 @@ resource site 'Microsoft.Web/sites@2024-04-01' = {
           name: 'KEY_VAULT_URI'
           value: 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/'
         }
+        {
+          name: 'ServiceBusConnection__fullyQualifiedNamespace'
+          value: serviceBusFqdn
+        }
+        {
+          name: 'ServiceBusConnection__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'SERVICEBUS_QUEUE_NAME'
+          value: serviceBusQueueName
+        }
       ]
     }
     functionAppConfig: {
@@ -152,6 +172,21 @@ module kvRbac 'role-on-keyvault.bicep' = {
     keyVaultName: keyVaultName
   }
 }
+
+resource sb 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' existing = {
+  name: serviceBusNamespaceName
+}
+
+resource sbRoles 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for role in [serviceBusDataSender, serviceBusDataReceiver]: {
+  name: guid(sb.id, site.id, role)
+  scope: sb
+  properties: {
+    principalId: site.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', role)
+    description: 'Function App identity: Service Bus data plane (no connection string)'
+  }
+}]
 
 output name string = site.name
 output principalId string = site.identity.principalId

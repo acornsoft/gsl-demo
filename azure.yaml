@@ -7,9 +7,8 @@ infra:
   provider: bicep
   path: infra
   module: main
-# Add the Function App code when Big D's API project exists. Example:
-# services:
-#   api:
-#     project: ./src/api
-#     language: dotnet
-#     host: function
+services:
+  api:
+    project: ./src/functions/GslFunctions
+    language: dotnet
+    host: function
