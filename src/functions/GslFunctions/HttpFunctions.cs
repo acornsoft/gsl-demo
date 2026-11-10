@@ -1,48 +1,56 @@
 using System.Net;
-using System.Reflection;
-using Gsl.Functions.Messaging;
-using Gsl.Functions.RegE;
+using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
 
 namespace Gsl.Functions;
 
-public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<HttpFunctions> log)
+// Minimal placeholder for func-gsl-dev-eastus-001 (.NET 8 isolated).
+// Ted will replace this with the Reg E app from feat/fn-reg-e-clock.
+public sealed class HttpFunctions
 {
-    private static readonly string Version =
-        typeof(HttpFunctions).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0]
-        ?? "0.0.0";
-
     [Function("health")]
     public async Task<HttpResponseData> Health(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
         var res = req.CreateResponse(HttpStatusCode.OK);
-        await res.WriteAsJsonAsync(new { status = "ok", version = Version, timestamp = DateTimeOffset.UtcNow });
+        await res.WriteAsJsonAsync(new
+        {
+            status = "ok",
+            service = "gsl-demo",
+            time = DateTimeOffset.UtcNow
+        });
         return res;
     }
 
-    [Function("regEDeadlines")]
-    public async Task<HttpResponseData> RegEDeadlines(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "disputes/reg-e/deadlines")] HttpRequestData req)
+    [Function("queue-check")]
+    public async Task<HttpResponseData> QueueCheck(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "queue-check")] HttpRequestData req)
     {
-        var body = await new StreamReader(req.Body).ReadToEndAsync();
-        var (request, error) = RegERequestParser.Parse(body);
-        if (request is null)
+        var fqdn = Environment.GetEnvironmentVariable("ServiceBusConnection__fullyQualifiedNamespace");
+        var queue = Environment.GetEnvironmentVariable("SERVICEBUS_QUEUE_NAME") ?? "sbq-gsl-dev-001";
+        if (string.IsNullOrWhiteSpace(fqdn))
         {
-            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-            await bad.WriteAsJsonAsync(new { error });
-            bad.StatusCode = HttpStatusCode.BadRequest; // WriteAsJsonAsync resets status to 200
+            var bad = req.CreateResponse(HttpStatusCode.ServiceUnavailable);
+            await bad.WriteAsJsonAsync(new { status = "error", error = "Service Bus namespace setting is missing." });
+            bad.StatusCode = HttpStatusCode.ServiceUnavailable;
             return bad;
         }
 
-        var result = RegEDeadlineCalculator.Calculate(request);
-        var serviceBus = await publisher.PublishAsync(result);
-        log.LogInformation("Reg E deadlines calculated; serviceBus={ServiceBus}", serviceBus);
+        await using var client = new ServiceBusClient(fqdn, new DefaultAzureCredential());
+        await using var receiver = client.CreateReceiver(queue);
+        // Peek only. An empty queue still proves the identity can reach the queue. No messages are sent.
+        _ = await receiver.PeekMessageAsync();
 
         var ok = req.CreateResponse(HttpStatusCode.OK);
-        await ok.WriteAsJsonAsync(new { deadlines = result, serviceBus });
+        await ok.WriteAsJsonAsync(new
+        {
+            status = "ok",
+            service = "gsl-demo",
+            queue,
+            reachable = true
+        });
         return ok;
     }
 }

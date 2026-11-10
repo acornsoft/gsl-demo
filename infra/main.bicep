@@ -73,6 +73,17 @@ module keyVault 'modules/keyvault.bicep' = {
   }
 }
 
+module serviceBus 'modules/servicebus.bicep' = {
+  name: 'servicebus'
+  params: {
+    location: location
+    tags: tags
+    name: names.sbns
+    skuName: serviceBusSku
+    queueNames: [ names.sbq ]
+  }
+}
+
 module functionApp 'modules/functionapp.bicep' = {
   name: 'functionapp'
   params: {
@@ -85,17 +96,8 @@ module functionApp 'modules/functionapp.bicep' = {
     appInsightsResourceGroup: resourceGroup().name
     keyVaultName: keyVault.outputs.name
     keyVaultResourceGroup: resourceGroup().name
-  }
-}
-
-module serviceBus 'modules/servicebus.bicep' = {
-  name: 'servicebus'
-  params: {
-    location: location
-    tags: tags
-    name: names.sbns
-    skuName: serviceBusSku
-    queueNames: [ names.sbq ]
+    serviceBusNamespaceName: serviceBus.outputs.name
+    serviceBusQueueName: names.sbq
   }
 }
 
