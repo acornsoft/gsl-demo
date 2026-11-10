@@ -14,8 +14,8 @@ public sealed class HttpFunctions(IDisputeEventPublisher publisher, ILogger<Http
         typeof(HttpFunctions).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0]
         ?? "0.0.0";
 
-    [Function("GetHealth")]
-    public async Task<HttpResponseData> GetHealth(
+    [Function("HealthCheck")]
+    public async Task<HttpResponseData> HealthCheck(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
         var res = req.CreateResponse(HttpStatusCode.OK);
