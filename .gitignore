@@ -15,3 +15,6 @@ obj/
 node_modules/
 .vscode/
 .DS_Store
+src/functions/out/
+src/functions/*.zip
+local.settings.json
