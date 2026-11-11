@@ -27,8 +27,17 @@ param costCenterTag string = 'cc-gsl-demo-placeholder'
 param logDailyCapGb string = '0.1'
 
 @allowed([ 'Basic', 'Standard' ])
-@description('Basic = queues only. Switch to Standard when ADO 2791/2793 need topics.')
-param serviceBusSku string = 'Basic'
+@description('Standard = queues, topics and subscriptions (Basic is queues only). A Standard-to-Basic downgrade is not documented; do not plan on one.')
+param serviceBusSku string = 'Standard'
+
+@description('Create the Message Explorer synthetic queue sbq-lfme-synth-dev-001, topic sbt-lfme-synth-dev-001 and subscription sbs-lfme-synth-all (TTL PT1H).')
+param lfmeSynthEntities bool = true
+
+@description('Object ID to grant Azure Service Bus Data Sender on the LFME queue and topic only. Empty = no role assignment.')
+param lfmeSenderPrincipalId string = ''
+
+@allowed([ 'User', 'ServicePrincipal', 'Group' ])
+param lfmeSenderPrincipalType string = 'User'
 
 var workload = 'gsl'
 var sfx = '${workload}-${env}-${location}-${instance}'
@@ -81,6 +90,9 @@ module serviceBus 'modules/servicebus.bicep' = {
     name: names.sbns
     skuName: serviceBusSku
     queueNames: [ names.sbq ]
+    lfmeSynthEntities: lfmeSynthEntities
+    lfmeSenderPrincipalId: lfmeSenderPrincipalId
+    lfmeSenderPrincipalType: lfmeSenderPrincipalType
   }
 }
 
